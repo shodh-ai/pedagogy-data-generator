@@ -1,7 +1,7 @@
 import getpass
 import os
 import itertools
-from tqdm.asyncio import tqdm as asyncio_tqdm  # For async usage
+from tqdm.asyncio import tqdm as asyncio_tqdm
 from dotenv import load_dotenv
 from langchain.prompts import PromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -18,6 +18,45 @@ from data import (
     GRAMMAR,
     VOCAB,
 )
+
+CHECKPOINT_FILE = "checkpoint.txt"
+
+
+def save_checkpoint(completed_count: int):
+    """Saves the number of completed combinations to the checkpoint file."""
+    try:
+        with open(CHECKPOINT_FILE, "w") as f:
+            f.write(str(completed_count))
+    except IOError as e:
+        print(f"Warning: Could not write to checkpoint file '{CHECKPOINT_FILE}': {e}")
+
+
+def load_checkpoint() -> int:
+    """Loads the number of completed combinations from the checkpoint file."""
+    if os.path.exists(CHECKPOINT_FILE):
+        try:
+            with open(CHECKPOINT_FILE, "r") as f:
+                content = f.read().strip()
+                if content:
+                    return int(content)
+                else:
+                    print(
+                        f"Warning: Checkpoint file '{CHECKPOINT_FILE}' is empty. Starting from scratch."
+                    )
+                    return 0
+        except ValueError:
+            print(
+                f"Warning: Checkpoint file '{CHECKPOINT_FILE}' content is invalid. Starting from scratch."
+            )
+            return 0
+        except IOError as e:
+            print(
+                f"Warning: Could not read checkpoint file '{CHECKPOINT_FILE}': {e}. Starting from scratch."
+            )
+            return 0
+    return 0
+
+
 from schema import Pedagogy
 import asyncio
 import csv
@@ -46,8 +85,8 @@ async def data_validation(content: str) -> Pedagogy | None:
         try:
             agent = Agent(
                 "gemini-2.0-flash",
-                output_type=Pedagogy,
-                output_retries=5,
+                result_type=Pedagogy,
+                retries=5,
             )
             res = await agent.run(content)
             res = res.output
@@ -210,22 +249,34 @@ async def get_feedback(
 
 async def main():
 
-    with open("data.csv", "w") as f:
+    csv_file_path = "data.csv"
+    header_list = [
+        "Answer One",
+        "Answer Two",
+        "Answer Three",
+        "Estimated Overall English Comfort Level",
+        "Initial Impression",
+        "Speaking Strengths",
+        "Fluency",
+        "Grammar",
+        "Vocabulary",
+        "Pedagogy",
+    ]
+
+    file_exists = os.path.exists(csv_file_path)
+    is_empty = False
+    if file_exists:
+        try:
+            is_empty = os.path.getsize(csv_file_path) == 0
+        except OSError:
+            pass
+
+    needs_header = not file_exists or is_empty
+
+    with open(csv_file_path, "a", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(
-            [
-                "Answer One",
-                "Answer Two",
-                "Answer Three",
-                "Estimated Overall English Comfort Level",
-                "Initial Impression",
-                "Speaking Strengths",
-                "Fluency",
-                "Grammar",
-                "Vocabulary",
-                "Pedagogy",
-            ]
-        )
+        if needs_header:
+            writer.writerow(header_list)
 
         possible_combinations = (
             len(QUESTION_ONE_ANSWERS)
@@ -238,7 +289,9 @@ async def main():
             * len(GRAMMAR)
             * len(VOCAB)
         )
-        completed_combinations = 0
+
+        completed_from_checkpoint = load_checkpoint()
+        completed_combinations_overall = completed_from_checkpoint
 
         all_answer_lists = [
             list(range(len(QUESTION_ONE_ANSWERS))),
@@ -252,9 +305,32 @@ async def main():
             list(range(len(VOCAB))),
         ]
 
-        index_combinations = list(itertools.product(*all_answer_lists))
+        index_combinations_full = list(itertools.product(*all_answer_lists))
+
+        if completed_from_checkpoint > 0:
+            print(
+                f"Resuming from {completed_from_checkpoint} previously completed combinations out of {possible_combinations} total."
+            )
+
+        combinations_to_process_this_run = index_combinations_full[
+            completed_from_checkpoint:
+        ]
+
+        if not combinations_to_process_this_run:
+            print(
+                f"All {possible_combinations} combinations have already been processed according to the checkpoint."
+            )
+            return
+
+        print(
+            f"Processing {len(combinations_to_process_this_run)} remaining combinations."
+        )
+
         async for indices in asyncio_tqdm(
-            index_combinations, total=possible_combinations, desc="Generating Feedback"
+            combinations_to_process_this_run,
+            total=possible_combinations,
+            initial=completed_from_checkpoint,
+            desc="Generating Feedback",
         ):
             i, j, k, l, m, n, o, p, q = indices
             res = await get_feedback(i, j, k, l, m, n, o, p, q)
@@ -273,7 +349,8 @@ async def main():
                         res.model_dump(),
                     ]
                 )
-                completed_combinations += 1
+                completed_combinations_overall += 1
+                save_checkpoint(completed_combinations_overall)
 
 
 if __name__ == "__main__":
