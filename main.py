@@ -55,7 +55,7 @@ if "GEMINI_API_KEY" not in os.environ and "GOOGLE_API_KEY" in os.environ:
     os.environ["GEMINI_API_KEY"] = os.environ["GOOGLE_API_KEY"]
 
 llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-pro-latest", # Using Pro for potentially more complex generation
+    model="gemini-2.0-flash",
     temperature=0.3, # Slightly creative but still grounded for persona
     convert_system_message_to_human=True
 )
