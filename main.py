@@ -306,9 +306,7 @@ async def main_modeling_generator():
                 ])
 
             save_checkpoint(current_overall_index + 1)
-            if (i > 0 and (i + 1) % 5 == 0) or total_combinations < 10 : # More frequent for Gemini Pro QPM
-                 print(f"Pausing for 10s to respect API rate limits after {i+1} calls...")
-                 await asyncio.sleep(10)
+        
 
 
 if __name__ == "__main__":
