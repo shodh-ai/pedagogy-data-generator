@@ -6,11 +6,12 @@ import os
 import json
 import asyncio
 import random
+import csv
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from main import generate_correction_example
-from data import TOPICS, PROFICIENCY_LEVELS, TASK_TYPES
+from main_modelling import generate_correction_example, save_to_csv
+from data_modelling import TOPICS, PROFICIENCY_LEVELS, TASK_TYPES
 
 
 async def test_generator():
@@ -67,11 +68,17 @@ async def test_generator():
         print("\n--- CORRECT VERSION ---\n")
         print(correction_example.correct_version)
         
-        # Save to a test output file
+        # Convert to a dictionary for saving
+        example_dict = correction_example.model_dump()
+        
+        # Save to JSON
         with open("test_example.json", "w") as f:
-            json.dump(correction_example.model_dump(), f, indent=2)
+            json.dump(example_dict, f, indent=2)
+        
+        # Save to CSV
+        save_to_csv([example_dict], "test_example.csv")
             
-        print("\nExample saved to test_example.json")
+        print("\nExample saved to test_example.json and test_example.csv")
     else:
         print("Failed to generate an example. Check for errors in the console output.")
 

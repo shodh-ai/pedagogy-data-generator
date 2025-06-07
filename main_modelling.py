@@ -4,6 +4,7 @@ Creates synthetic data with incorrect language samples, thought processes, and c
 
 import os
 import json
+import csv
 import getpass
 import asyncio
 import random
@@ -16,8 +17,8 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import ValidationError
 from pydantic_ai import Agent
 
-from schema import CorrectionExample, CorrectionDataset
-from data import (
+from schema_modelling import CorrectionExample
+from data_modelling import (
     TOPICS,
     PROFICIENCY_LEVELS,
     GRAMMAR_MISTAKES,
@@ -61,6 +62,44 @@ def load_checkpoint() -> int:
             print(f"Warning: Could not read checkpoint file '{CHECKPOINT_FILE}': {e}. Starting from scratch.")
             return 0
     return 0
+
+
+def save_to_csv(dataset, csv_filename):
+    """Save the dataset to a CSV file.
+    
+    Args:
+        dataset: List of dictionaries containing correction examples
+        csv_filename: Name of the CSV file to save to
+    """
+    if not dataset:
+        print("No data to save to CSV.")
+        return
+        
+    try:
+        with open(csv_filename, 'w', newline='', encoding='utf-8') as csvfile:
+            # Get all fields from the first example
+            fieldnames = list(dataset[0].keys())
+            
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+            writer.writeheader()
+            
+            for example in dataset:
+                # Process the example data to make it CSV-friendly
+                row = {}
+                for key, value in example.items():
+                    if key == 'mistake_type' and isinstance(value, list):
+                        # Convert list to pipe-separated string
+                        row[key] = '|'.join(value)
+                    elif isinstance(value, str):
+                        # Replace newlines with space to keep CSV format clean
+                        row[key] = value.replace('\n', ' ').replace('\r', '')
+                    else:
+                        row[key] = value
+                writer.writerow(row)
+                
+        print(f"Successfully wrote {len(dataset)} examples to {csv_filename}")
+    except Exception as e:
+        print(f"Error writing to CSV: {e}")
 
 
 def select_mistake_types(task_type: str):
@@ -214,13 +253,17 @@ async def main():
                 if batch_counter >= BATCH_SIZE:
                     save_checkpoint(i + 1)
                     
+                    # Save to JSON
                     with open(OUTPUT_JSON_FILE, "w") as f:
                         json.dump({"examples": dataset, "metadata": {
                             "last_updated": datetime.now().isoformat(),
                             "total_examples": len(dataset)
                         }}, f, indent=2)
                     
-                    print(f"Saved checkpoint at combination {i + 1} and wrote {len(dataset)} examples to {OUTPUT_JSON_FILE}")
+                    # Save to CSV
+                    save_to_csv(dataset, OUTPUT_CSV_FILE)
+                    
+                    print(f"Saved checkpoint at combination {i + 1} and wrote {len(dataset)} examples to {OUTPUT_JSON_FILE} and {OUTPUT_CSV_FILE}")
                     batch_counter = 0
                     
         except Exception as e:
@@ -228,6 +271,7 @@ async def main():
     
     save_checkpoint(total_combinations)
     
+    # Save final JSON output
     with open(OUTPUT_JSON_FILE, "w") as f:
         json.dump({"examples": dataset, "metadata": {
             "last_updated": datetime.now().isoformat(),
@@ -235,7 +279,10 @@ async def main():
             "completion": "full"
         }}, f, indent=2)
     
-    print(f"Generation complete! {len(dataset)} examples written to {OUTPUT_JSON_FILE}")
+    # Save final CSV output
+    save_to_csv(dataset, OUTPUT_CSV_FILE)
+    
+    print(f"Generation complete! {len(dataset)} examples written to {OUTPUT_JSON_FILE} and {OUTPUT_CSV_FILE}")
 
 
 if __name__ == "__main__":
