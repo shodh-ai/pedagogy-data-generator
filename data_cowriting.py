@@ -1,5 +1,29 @@
 # data_cowriting.py
+# data_cowriting.py
 
+# --- Student Profile Context Dimensions (Essential for Personas to react to) ---
+QUESTION_ONE_ANSWERS = [
+    "My main goal is to score 105+ for grad school, focusing on speaking and writing.",
+    "I need to improve my speaking organization and clarity under time pressure.",
+    "I want to strengthen academic writing and listening for university readiness.",
+]
+
+QUESTION_TWO_ANSWERS = [
+    "I'm fairly confident, but want to polish writing and make speaking more natural under pressure.",
+    "Reading/listening are okay, but I struggle with essay organization and academic vocab.",
+    "A bit nervous about academic tasks; sometimes get lost or can't express ideas clearly.",
+]
+
+QUESTION_THREE_ANSWERS = [
+    "Nervous, feels like a big challenge, but motivated to work and improve with guidance.",
+    "Okay, some weak spots, but positive I can reach my target with practice.",
+    "Pretty good! Been studying, now want to fine-tune and get used to the test format.",
+]
+
+# --- Now you can use them ---
+QUESTION_ONE_ANSWERS_CTX = QUESTION_ONE_ANSWERS 
+QUESTION_TWO_ANSWERS_CTX = QUESTION_TWO_ANSWERS
+QUESTION_THREE_ANSWERS_CTX = QUESTION_THREE_ANSWERS
 # --- Reused Dimensions from previous data files ---
 TEACHER_PERSONAS_COWRITING = [
     {

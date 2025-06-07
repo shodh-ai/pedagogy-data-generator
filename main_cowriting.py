@@ -10,11 +10,12 @@ from pydantic import ValidationError
 import asyncio
 import csv
 import json
+from typing import Optional
 
 from data_cowriting import ( # Assuming you've populated this with relevant dimensions
-    TEACHER_PERSONAS_MODELING as TEACHER_PERSONAS_COWRITING, # Reuse or make specific
+    TEACHER_PERSONAS_COWRITING, # Reuse or make specific
     ESTIMATED_OVERALL_ENGLISH_COMFORT_LEVEL,
-    INITIAL_IMPRESSION_FOR_STUDENT, # Could be adapted to "Current_Student_Affective_State"
+    STUDENT_AFFECTIVE_STATE_PROXY, # Could be adapted to "Current_Student_Affective_State"
     # New dimensions for co-writing:
     WRITING_TASK_CONTEXTS, # List of dicts: {"task_type": "Independent", "section": "Body Paragraph 1 - Topic Sentence"}
     STUDENT_WRITTEN_INPUT_CHUNKS, # List of example student text snippets
@@ -76,7 +77,7 @@ async def generate_cowriting_intervention_for_scenario(
     student_written_chunk: str,
     student_articulation: Optional[str],
     comfort_level: str,
-    affective_state: str, # Using "Initial Impression" as a proxy for affective state
+    affective_state: Optional[str] = "not specified", # Using "Initial Impression" as a proxy for affective state
 ) -> CoWritingStrategy | None:
     
     persona_name = persona_dict["name"]
@@ -199,15 +200,13 @@ async def main_cowriting_generator():
                 for written_chunk in STUDENT_WRITTEN_INPUT_CHUNKS: # Example chunks
                     for articulation in STUDENT_ARTICULATED_THOUGHTS + [None]: # Include no articulation
                         for comfort in ESTIMATED_OVERALL_ENGLISH_COMFORT_LEVEL:
-                            for affect in INITIAL_IMPRESSION_FOR_STUDENT: # Using this as a proxy for affect
-                                scenarios_to_process.append({
+                            scenarios_to_process.append({
                                     "persona_dict": persona_dict,
                                     "task_ctx": task_ctx,
                                     "lo_focus": lo_focus,
                                     "written_chunk": written_chunk,
                                     "articulation": articulation,
                                     "comfort": comfort,
-                                    "affect": affect,
                                 })
     
     total_combinations = len(scenarios_to_process)
@@ -241,7 +240,6 @@ async def main_cowriting_generator():
                 student_written_chunk=scenario["written_chunk"],
                 student_articulation=scenario["articulation"],
                 comfort_level=scenario["comfort"],
-                affective_state=scenario["affect"],
             )
 
             if res_strategy and res_strategy.intervention_plan:
