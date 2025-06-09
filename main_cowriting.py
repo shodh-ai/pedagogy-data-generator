@@ -269,7 +269,7 @@ async def main_cowriting_generator():
                 # Write a FAILED row
                 writer.writerow([
                     scenario["persona_dict"]["name"], scenario["lo_focus"], scenario["task_ctx"]["section"],
-                    scenario["written_chunk"], scenario["articulation"], scenario["comfort"], scenario["affect"],
+                    scenario["written_chunk"], scenario["articulation"], scenario["comfort"], scenario.get("affect", "not specified"),
                     "FAILED_TO_GENERATE", False, None, None, None, None, None, None, None, None
                 ])
             
